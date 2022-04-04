@@ -1,7 +1,12 @@
+%Code used to run comparisons in section 4
+
+
 %%Clear all the previous variables and close previous figures
 clear all
 close all
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%First run outbreak with vaccinations at day 90
 %Define model parameters as a structure
 parav = struct('beta1',0.3,'beta2',0.2,'p_S',0.75,'gamma1',1/5,'gamma2',1/10,'p_H',0.338,'xi',0.125,'p_D',0.235,'N',68000000,'u',0,'alpha',0.61,'ro',0); 
 
@@ -13,7 +18,7 @@ mintime = 0;
 period1=90;
 maxtime = period1;
 
-%Run model by calling function ODE_SIIHRmodel.m
+%Run model by calling function ODE_SIIHRv_model.m
 [ClassesV] = ODE_SIIHRv_model(parav,ICs,mintime,maxtime);
 
 % Now define new parameter and ICs for next phase
@@ -122,6 +127,7 @@ deathsQ=round(ClassesQ.D(end))
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%Finding metrics for CEA
 
 %Set up time horizon
 NumYears = 10;
@@ -131,19 +137,13 @@ maxtime = 365*NumYears + 1;
 t_Yr=[1:365:NumYears*365+1];
 
 
-
-%Set up discounting
-dw = 0.133;
-yll = 11;%discounted average years of life lost per death
-r=0.03;
-
 %Set up the number of strategies
 NumStrats = 4;
 
 %Preallocate matrices for storing DALYs and Costs
 DALYMat = zeros(1,NumStrats);
 
-% Run SIRSEI model for each startegy for the number of iterations and store the key
+% Run the models for each startegy for the number of iterations and store the key
 % metrics
 
 for Strat = 1:NumStrats
@@ -153,7 +153,7 @@ for Strat = 1:NumStrats
         maxtime=365*10;
         [Classes3] = ODE_SIIHR_model(parav,ICs,0,maxtime);
 
-               %Compute treatments, person-years and deaths each year
+               %Compute person-years and deaths each year
         for r=1:length(t_Yr)-1
             %Person years infected
             PersonYears_annual(r) = trapz(Classes3.t([t_Yr(r): t_Yr(r+1)]), Classes3.Is([t_Yr(r): t_Yr(r+1)]))/365; %divide by 365 to go from person days to person years
@@ -178,7 +178,7 @@ for Strat = 1:NumStrats
         period1=100;
         maxtime = period1;
 
-        %Run model by calling function ODE_SIIHRmodel.m
+        %Run model by calling function ODE_SIIHRv_model.m
         [ClassesV] = ODE_SIIHRv_model(parav,ICs,mintime,maxtime);
 
         % Now define new parameter and ICs for next phase
@@ -196,7 +196,7 @@ for Strat = 1:NumStrats
         combineV_Is= [ClassesV.Is(1:end-1);ClassesV2.Is];
         combineV_D = [ClassesV.D(1:end-1);ClassesV2.D];
         
-                       %Compute treatments, person-years and deaths each year
+                       %Compute person-years and deaths each year
         for r=1:length(t_Yr)-1
             %Person years infected
             PersonYears_annual(r) = trapz(combineV_t([t_Yr(r): t_Yr(r+1)]), combineV_Is([t_Yr(r): t_Yr(r+1)]))/365; %divide by 365 to go from person days to person years
@@ -232,7 +232,7 @@ for Strat = 1:NumStrats
     combineL_Is=[ClassesL2.Is(1:end-1);ClassesL3.Is(1:end-1);ClassesL4.Is];
     combineL_D=[ClassesL2.D(1:end-1);ClassesL3.D(1:end-1);ClassesL4.D];
 
-                              %Compute treatments, person-years and deaths each year
+                              %Compute person-years and deaths each year
         for r=1:length(t_Yr)-1
             %Person years infected
             PersonYears_annual(r) = trapz(combineL_t([t_Yr(r): t_Yr(r+1)]), combineL_Is([t_Yr(r): t_Yr(r+1)]))/365; %divide by 365 to go from person days to person years
@@ -250,10 +250,10 @@ for Strat = 1:NumStrats
     mintimeq = 0;
     maxtimeq = 365*10;
 
-    %Run model by calling function ODE_SIIHRmodel.m
+    %Run model by calling function ODE_SIIHRq_model.m
     [ClassesQ] = ODE_SIIHRq_model(paraQ,ICsQ,mintimeq,maxtimeq);
 
-                          %Compute treatments, person-years and deaths each year
+                          %Compute person-years and deaths each year
         for r=1:length(t_Yr)-1
             %Person years infected
             PersonYears_annual(r) = trapz(ClassesQ.t([t_Yr(r): t_Yr(r+1)]), ClassesQ.Is([t_Yr(r): t_Yr(r+1)]))/365; %divide by 365 to go from person days to person years
@@ -274,10 +274,11 @@ for Strat = 1:NumStrats
         DALYs_annual{Strat}(1,:)=DALYs;
 end 
   %%
+%Calculate delta DALYs  
 DDALYMat = repmat(DALYMat(:,1),1,NumStrats) - DALYMat
 DCost =[0, 11.7e9, 83.3e9, 110.4e9]
-%ICERs show startegy 3 is weakly dominated - recalculate ICERs excluding
-%strategy 3
+%ICERs show lockdown is dominated - recalculate ICERs excluding
+%lockdown
 ICER2=zeros(1,3);
 ICER2(1)=0;
 ICER2(2)=(DCost(2)-DCost(1))/(DDALYMat(2)-DDALYMat(1));
